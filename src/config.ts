@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export interface Config {
   token?: string;
   login?: string;
@@ -6,13 +8,14 @@ export interface Config {
 }
 
 export function getConfig(): Config {
-  const token = process.env.MOYSKLAD_TOKEN;
+  // Поддержка разных имён переменных
+  const token = process.env.MOYSKLAD_TOKEN || process.env.MOY_SKLAD_API_KEY;
   const login = process.env.MOYSKLAD_LOGIN;
   const password = process.env.MOYSKLAD_PASSWORD;
 
   if (!token && (!login || !password)) {
     throw new Error(
-      'Требуется указать MOYSKLAD_TOKEN или MOYSKLAD_LOGIN + MOYSKLAD_PASSWORD'
+      'Требуется указать MOYSKLAD_TOKEN (или MOY_SKLAD_API_KEY) или MOYSKLAD_LOGIN + MOYSKLAD_PASSWORD'
     );
   }
 
