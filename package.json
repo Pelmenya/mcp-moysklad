@@ -1,0 +1,62 @@
+{
+  "name": "mcp-moysklad",
+  "version": "0.1.0",
+  "description": "MCP сервер для интеграции AI-ассистентов с API МойСклад",
+  "keywords": [
+    "mcp",
+    "moysklad",
+    "мойсклад",
+    "api",
+    "claude",
+    "ai",
+    "erp"
+  ],
+  "author": "Pelmenya",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "mcp-moysklad": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "zod": "3.24.2",
+    "zod-to-json-schema": "3.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.13.9",
+    "@typescript-eslint/eslint-plugin": "8.26.0",
+    "@typescript-eslint/parser": "8.26.0",
+    "eslint": "9.22.0",
+    "prettier": "3.5.3",
+    "tsup": "8.4.0",
+    "typescript": "5.8.3",
+    "vitest": "3.0.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pelmenya/mcp-moysklad.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Pelmenya/mcp-moysklad/issues"
+  },
+  "homepage": "https://github.com/Pelmenya/mcp-moysklad#readme"
+}
