@@ -71,35 +71,112 @@ AI-ассистент:
 
 ## Архитектура
 
+### Общая схема
+
+```mermaid
+graph TB
+    Dev["<b>Разработчик</b><br/>Claude Code CLI"]
+
+    subgraph AI["AI-ассистент"]
+        Code["Читает/пишет код<br/>CRM-проекта"]
+        MCP["Вызывает MCP tools<br/>(read-only)"]
+    end
+
+    subgraph CRM["CRM Backend (NestJS)"]
+        Modules["Модули МойСклад"]
+        Services["Сервисы"]
+        DB["PostgreSQL + PostGIS"]
+    end
+
+    subgraph MCPServer["MCP-сервер mcp-moysklad"]
+        Products["products (2 tools)"]
+        Stock["stock (2 tools)"]
+        Orders["orders (3 tools)"]
+        Counter["counterparties (2 tools)"]
+        Dashboard["dashboard (1 tool)"]
+    end
+
+    API["<b>МойСклад JSON API 1.2</b><br/>api.moysklad.ru"]
+
+    Dev --> AI
+    Code --> CRM
+    MCP --> MCPServer
+    Modules --> API
+    MCPServer --> API
+
+    style Dev fill:#4A90D9,stroke:#2E6BA6,color:#fff
+    style API fill:#FF6B35,stroke:#CC5529,color:#fff
+    style AI fill:#E8F4E8,stroke:#4CAF50
+    style CRM fill:#FFF3E0,stroke:#FF9800
+    style MCPServer fill:#E3F2FD,stroke:#2196F3
 ```
-┌─────────────────────────────────────────────────┐
-│                  Claude Code CLI                 │
-│           (AI-ассистент разработчика)            │
-├────────────────────┬────────────────────────────┤
-│                    │                            │
-│  Читает/пишет код  │  Вызывает MCP tools        │
-│  CRM-проекта       │  (read-only API МойСклад)  │
-│                    │                            │
-▼                    ▼                            │
-┌──────────────┐  ┌──────────────────────┐        │
-│  CRM Backend │  │  MCP-сервер          │        │
-│  (NestJS)    │  │  mcp-moysklad        │        │
-│              │  │                      │        │
-│  - Модули    │  │  10 tools:           │        │
-│  - Сервисы   │  │  - products (2)      │        │
-│  - Миграции  │  │  - stock (2)         │        │
-│  - Тесты     │  │  - orders (3)        │        │
-│              │  │  - counterparties (2) │        │
-│              │  │  - dashboard (1)     │        │
-└──────┬───────┘  └──────────┬───────────┘        │
-       │                     │                    │
-       │    Оба обращаются   │                    │
-       │    к одному API     │                    │
-       ▼                     ▼                    │
-  ┌──────────────────────────────┐                │
-  │   МойСклад JSON API 1.2     │                │
-  │   api.moysklad.ru            │                │
-  └──────────────────────────────┘                │
+
+### Сценарий дебага: синхронизация заказа
+
+```mermaid
+sequenceDiagram
+    actor Dev as Разработчик
+    participant Claude as Claude Code
+    participant CRM as CRM Backend<br/>(исходный код)
+    participant MCP as MCP-сервер
+    participant MS as МойСклад API
+
+    Dev->>Claude: "Заказ #500 не синхронизировался"
+
+    par Анализ кода и данных
+        Claude->>CRM: Читает order-polling-sync.service.ts
+        CRM-->>Claude: Логика polling, retry, маппинг полей
+    and
+        Claude->>MCP: moysklad_get_orders({search: "500"})
+        MCP->>MS: GET /entity/customerorder?search=500
+        MS-->>MCP: Данные заказа из МойСклад
+        MCP-->>Claude: {status, positions, agent, sum}
+    end
+
+    Claude->>Claude: Сравнивает код + данные МС
+
+    Note over Claude: Находит расхождение:<br/>заказ удалён в МС (404),<br/>polling сбросил isMsSynced,<br/>payment-retry пересоздал дубль
+
+    Claude->>CRM: Предлагает фикс в коде
+    Claude->>Dev: "Вот причина и патч"
+```
+
+### Структура MCP-сервера
+
+```mermaid
+graph LR
+    subgraph Entry["Точка входа"]
+        Index["index.ts"]
+        Server["server.ts<br/><i>McpServer</i>"]
+    end
+
+    subgraph Tools["Tools (10)"]
+        P["products.ts<br/>get_products<br/>get_product"]
+        S["stock.ts<br/>get_stock<br/>get_stock_by_store"]
+        O["orders.ts<br/>get_orders<br/>get_order<br/>create_order"]
+        C["counterparties.ts<br/>get_counterparties<br/>get_counterparty"]
+        R["reports.ts<br/>get_dashboard"]
+    end
+
+    subgraph Core["Ядро"]
+        Client["api/client.ts<br/><i>retry + rate limit</i>"]
+        Config["config.ts<br/><i>Bearer / Basic auth</i>"]
+        Utils["utils/<br/>pagination, filters,<br/>errors"]
+    end
+
+    API["МойСклад API 1.2"]
+
+    Index --> Server
+    Server --> P & S & O & C & R
+    P & S & O & C & R --> Client
+    Client --> Config
+    Client --> Utils
+    Client --> API
+
+    style Entry fill:#E8F5E9,stroke:#4CAF50
+    style Tools fill:#E3F2FD,stroke:#2196F3
+    style Core fill:#FFF3E0,stroke:#FF9800
+    style API fill:#FF6B35,stroke:#CC5529,color:#fff
 ```
 
 Ключевой момент: CRM и MCP-сервер — это **два независимых клиента** одного API. CRM работает в продакшне (создаёт заказы, синхронизирует данные). MCP-сервер работает в dev-среде (читает данные для отладки).
