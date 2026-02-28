@@ -1,14 +1,15 @@
 import { z } from 'zod';
 import { getClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { MsCounterparty, MsListResponse } from '../api/types.js';
+import type { MsCounterparty } from '../api/types.js';
 import { buildFilter, buildQueryParams, type FilterCondition } from '../utils/filters.js';
 import { normalizePagination, extractPaginationMeta } from '../utils/pagination.js';
 import { formatErrorForMcp } from '../utils/errors.js';
 
 export const getCounterpartiesSchema = z.object({
   search: z.string().optional().describe('Поиск по наименованию, ИНН, телефону, email'),
-  companyType: z.enum(['legal', 'entrepreneur', 'individual'])
+  companyType: z
+    .enum(['legal', 'entrepreneur', 'individual'])
     .optional()
     .describe('Тип контрагента: legal - юрлицо, entrepreneur - ИП, individual - физлицо'),
   tag: z.string().optional().describe('Фильтр по тегу'),

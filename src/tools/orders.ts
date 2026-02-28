@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { MsCustomerOrder, MsListResponse } from '../api/types.js';
+import type { MsCustomerOrder } from '../api/types.js';
 import { buildFilter, buildQueryParams, type FilterCondition } from '../utils/filters.js';
 import { normalizePagination, extractPaginationMeta } from '../utils/pagination.js';
 import { formatErrorForMcp } from '../utils/errors.js';
@@ -108,7 +108,7 @@ export async function getOrder(input: GetOrderInput) {
           quantity: pos.quantity,
           price: pos.price / 100,
           discount: pos.discount,
-          sum: (pos.quantity * pos.price * (100 - pos.discount) / 100) / 100,
+          sum: (pos.quantity * pos.price * (100 - pos.discount)) / 100 / 100,
         })),
       },
     };
@@ -121,12 +121,20 @@ export const createOrderSchema = z.object({
   organizationId: z.string().describe('ID организации (юрлица)'),
   agentId: z.string().describe('ID контрагента (покупателя)'),
   storeId: z.string().optional().describe('ID склада'),
-  positions: z.array(z.object({
-    productId: z.string().describe('ID товара'),
-    quantity: z.number().min(0.001).describe('Количество'),
-    price: z.number().optional().describe('Цена в рублях (если не указана, берётся из карточки товара)'),
-    discount: z.number().min(0).max(100).optional().describe('Скидка в процентах'),
-  })).min(1).describe('Позиции заказа'),
+  positions: z
+    .array(
+      z.object({
+        productId: z.string().describe('ID товара'),
+        quantity: z.number().min(0.001).describe('Количество'),
+        price: z
+          .number()
+          .optional()
+          .describe('Цена в рублях (если не указана, берётся из карточки товара)'),
+        discount: z.number().min(0).max(100).optional().describe('Скидка в процентах'),
+      })
+    )
+    .min(1)
+    .describe('Позиции заказа'),
   description: z.string().optional().describe('Комментарий к заказу'),
 });
 

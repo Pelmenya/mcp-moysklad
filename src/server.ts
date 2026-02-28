@@ -1,84 +1,51 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import { tools, type ToolName } from './tools/index.js';
+import { z } from 'zod';
+import { tools } from './tools/index.js';
 
 export function createServer() {
-  const server = new Server(
-    {
-      name: 'mcp-moysklad',
-      version: '0.1.0',
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    }
-  );
+  const server = new McpServer({
+    name: 'mcp-moysklad',
+    version: '0.1.0',
+  });
 
-  // Список доступных tools
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: Object.entries(tools).map(([name, tool]) => ({
-        name,
+  // Регистрируем все tools
+  for (const [name, tool] of Object.entries(tools)) {
+    server.registerTool(
+      name,
+      {
         description: tool.description,
-        inputSchema: zodToJsonSchema(tool.schema),
-      })),
-    };
-  });
+        inputSchema: tool.schema as z.ZodObject<z.ZodRawShape>,
+      },
+      async (args) => {
+        try {
+          const result = await tool.handler(args);
 
-  // Обработка вызовов tools
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const toolName = request.params.name as ToolName;
-    const tool = tools[toolName];
+          if (!result.success) {
+            return {
+              content: [{ type: 'text' as const, text: result.error ?? 'Неизвестная ошибка' }],
+              isError: true,
+            };
+          }
 
-    if (!tool) {
-      return {
-        content: [{ type: 'text', text: `Неизвестный инструмент: ${toolName}` }],
-        isError: true,
-      };
-    }
-
-    try {
-      const parsed = tool.schema.safeParse(request.params.arguments);
-      if (!parsed.success) {
-        return {
-          content: [{
-            type: 'text',
-            text: `Ошибка валидации параметров: ${parsed.error.message}`,
-          }],
-          isError: true,
-        };
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify(result.data, null, 2),
+              },
+            ],
+          };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+          return {
+            content: [{ type: 'text' as const, text: `Ошибка выполнения: ${message}` }],
+            isError: true,
+          };
+        }
       }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (tool.handler as (input: any) => Promise<any>)(parsed.data);
-
-      if (result.success === false) {
-        return {
-          content: [{ type: 'text', text: result.error }],
-          isError: true,
-        };
-      }
-
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify(result.data, null, 2),
-        }],
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      return {
-        content: [{ type: 'text', text: `Ошибка выполнения: ${message}` }],
-        isError: true,
-      };
-    }
-  });
+    );
+  }
 
   return server;
 }

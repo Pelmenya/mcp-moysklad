@@ -1,15 +1,5 @@
-import {
-  getProducts,
-  getProductsSchema,
-  getProduct,
-  getProductSchema,
-} from './products.js';
-import {
-  getStock,
-  getStockSchema,
-  getStockByStore,
-  getStockByStoreSchema,
-} from './stock.js';
+import { getProducts, getProductsSchema, getProduct, getProductSchema } from './products.js';
+import { getStock, getStockSchema, getStockByStore, getStockByStoreSchema } from './stock.js';
 import {
   getCounterparties,
   getCounterpartiesSchema,
@@ -24,12 +14,23 @@ import {
   createOrder,
   createOrderSchema,
 } from './orders.js';
-import {
-  getDashboard,
-  getDashboardSchema,
-} from './reports.js';
+import { getDashboard, getDashboardSchema } from './reports.js';
 
-export const tools = {
+export interface ToolResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export type ToolHandler = (input: unknown) => Promise<ToolResult>;
+
+export interface ToolDefinition {
+  description: string;
+  schema: import('zod').ZodObject<import('zod').ZodRawShape>;
+  handler: ToolHandler;
+}
+
+export const tools: Record<string, ToolDefinition> = {
   moysklad_get_products: {
     description: 'Получить список товаров из МойСклад с возможностью фильтрации и поиска',
     schema: getProductsSchema,
@@ -80,6 +81,6 @@ export const tools = {
     schema: getDashboardSchema,
     handler: getDashboard,
   },
-} as const;
+};
 
 export type ToolName = keyof typeof tools;

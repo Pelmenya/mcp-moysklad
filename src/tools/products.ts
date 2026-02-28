@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { getClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { MsProduct, MsListResponse } from '../api/types.js';
+import type { MsProduct } from '../api/types.js';
 import { buildFilter, buildQueryParams, type FilterCondition } from '../utils/filters.js';
 import { normalizePagination, extractPaginationMeta } from '../utils/pagination.js';
 import { formatErrorForMcp } from '../utils/errors.js';
@@ -10,7 +10,12 @@ export const getProductsSchema = z.object({
   search: z.string().optional().describe('Поиск по наименованию товара'),
   article: z.string().optional().describe('Фильтр по артикулу'),
   archived: z.boolean().optional().describe('Включать архивные товары (по умолчанию false)'),
-  limit: z.number().min(1).max(1000).optional().describe('Лимит записей (макс 1000, по умолчанию 25)'),
+  limit: z
+    .number()
+    .min(1)
+    .max(1000)
+    .optional()
+    .describe('Лимит записей (макс 1000, по умолчанию 25)'),
   offset: z.number().min(0).optional().describe('Смещение для пагинации'),
 });
 

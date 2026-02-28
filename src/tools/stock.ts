@@ -1,17 +1,25 @@
 import { z } from 'zod';
 import { getClient } from '../api/client.js';
 import { ENDPOINTS } from '../api/endpoints.js';
-import type { MsStockItem, MsListResponse } from '../api/types.js';
+import type { MsStockItem } from '../api/types.js';
 import { buildQueryParams } from '../utils/filters.js';
 import { normalizePagination, extractPaginationMeta } from '../utils/pagination.js';
 import { formatErrorForMcp } from '../utils/errors.js';
 
 export const getStockSchema = z.object({
   search: z.string().optional().describe('Поиск по наименованию товара'),
-  stockMode: z.enum(['all', 'positiveOnly', 'negativeOnly', 'empty', 'nonEmpty'])
+  stockMode: z
+    .enum(['all', 'positiveOnly', 'negativeOnly', 'empty', 'nonEmpty'])
     .optional()
-    .describe('Режим остатков: all - все, positiveOnly - положительные, negativeOnly - отрицательные'),
-  limit: z.number().min(1).max(1000).optional().describe('Лимит записей (макс 1000, по умолчанию 25)'),
+    .describe(
+      'Режим остатков: all - все, positiveOnly - положительные, negativeOnly - отрицательные'
+    ),
+  limit: z
+    .number()
+    .min(1)
+    .max(1000)
+    .optional()
+    .describe('Лимит записей (макс 1000, по умолчанию 25)'),
   offset: z.number().min(0).optional().describe('Смещение для пагинации'),
 });
 
@@ -75,7 +83,10 @@ export async function getStockByStore(input: GetStockByStoreInput) {
       search: input.search,
     });
 
-    params.set('filter', `store=https://api.moysklad.ru/api/remap/1.2/entity/store/${input.storeId}`);
+    params.set(
+      'filter',
+      `store=https://api.moysklad.ru/api/remap/1.2/entity/store/${input.storeId}`
+    );
 
     const response = await client.getList<MsStockItem>(ENDPOINTS.stockByStore, params);
     const paginationMeta = extractPaginationMeta(response.meta);
